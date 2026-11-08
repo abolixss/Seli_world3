@@ -1,0 +1,220 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
+  <meta name="theme-color" content="#ffb3c7">
+  <meta name="mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <title>SELI'S LITTLE WORLD</title>
+  <style>
+:root {
+  --pink: #ff7eb0;
+  --pink-soft: rgba(255, 190, 215, 0.55);
+  --ink: #3a1d33;
+  --safe-l: env(safe-area-inset-left, 0px);
+  --safe-r: env(safe-area-inset-right, 0px);
+  --safe-b: env(safe-area-inset-bottom, 0px);
+  --safe-t: env(safe-area-inset-top, 0px);
+}
+
+* { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+
+html, body {
+  margin: 0;
+  height: 100%;
+  overflow: hidden;
+  background: #cfe8ef;
+  font-family: system-ui, -apple-system, 'Segoe UI', Roboto, Tahoma, sans-serif;
+  color: var(--ink);
+  user-select: none;
+  -webkit-user-select: none;
+  -webkit-touch-callout: none;
+  overscroll-behavior: none;
+}
+
+#game { position: fixed; inset: 0; width: 100%; height: 100%; display: block; touch-action: none; }
+#camzone { position: fixed; inset: 0; touch-action: none; z-index: 1; }
+
+/* ---------- HUD ---------- */
+#hud { position: fixed; top: calc(8px + var(--safe-t)); left: calc(10px + var(--safe-l)); z-index: 5; display: flex; gap: 8px; align-items: center; pointer-events: none; }
+#timeChip, #fps {
+  background: rgba(40, 20, 40, 0.38);
+  color: #fff;
+  border-radius: 999px;
+  padding: 4px 12px;
+  font-size: 13px;
+  backdrop-filter: blur(4px);
+}
+#fps { pointer-events: auto; font-variant-numeric: tabular-nums; opacity: 0.8; }
+
+/* ---------- touch controls ---------- */
+#controls { position: fixed; inset: 0; z-index: 4; pointer-events: none; }
+#joyZone {
+  position: absolute; left: 0; bottom: 0; width: 46%; height: 70%;
+  pointer-events: auto; touch-action: none;
+}
+#joyBase {
+  position: absolute;
+  left: calc(80px + var(--safe-l)); bottom: calc(70px + var(--safe-b));
+  width: 118px; height: 118px; margin: -59px 0 0 -59px;
+  border-radius: 50%;
+  border: 2px solid rgba(255, 255, 255, 0.55);
+  background: radial-gradient(circle, rgba(255,255,255,0.2), rgba(255,160,200,0.16));
+  transition: opacity 0.2s;
+  opacity: 0.55;
+}
+#joyBase:not(.active) { top: auto; }
+#joyBase.active { opacity: 1; }
+#joyKnob {
+  position: absolute; left: 50%; top: 50%;
+  width: 54px; height: 54px; border-radius: 50%;
+  transform: translate(-50%, -50%);
+  background: radial-gradient(circle at 35% 30%, #fff, #ffc2da);
+  box-shadow: 0 3px 10px rgba(120, 30, 80, 0.35);
+}
+
+#actions {
+  position: absolute; right: calc(18px + var(--safe-r)); bottom: calc(22px + var(--safe-b));
+  width: 190px; height: 170px; pointer-events: none;
+}
+.abtn {
+  position: absolute; pointer-events: auto; touch-action: none;
+  width: 58px; height: 58px; border-radius: 50%;
+  border: 2px solid rgba(255, 255, 255, 0.75);
+  background: linear-gradient(160deg, rgba(255,150,195,0.85), rgba(235,90,150,0.85));
+  color: #fff; font-weight: 700; font-size: 12px; letter-spacing: 0.5px;
+  box-shadow: 0 4px 12px rgba(120, 30, 80, 0.35);
+}
+.abtn.big { width: 78px; height: 78px; right: 0; bottom: 0; font-size: 14px; }
+#btnAction { right: 88px; bottom: 6px; }
+#btnRun { right: 36px; bottom: 92px; }
+.abtn.down { transform: scale(0.92); filter: brightness(1.15); }
+.abtn.on { background: linear-gradient(160deg, #ffe27a, #ffb347); color: #5a2a00; }
+
+/* ---------- debug ---------- */
+#debug {
+  position: fixed; top: calc(40px + var(--safe-t)); left: calc(10px + var(--safe-l)); z-index: 20;
+  display: flex; flex-wrap: wrap; gap: 6px; max-width: 62vw;
+  padding: 8px; border-radius: 12px; background: rgba(30, 15, 35, 0.72);
+}
+#debug[hidden] { display: none; }
+#debug button {
+  border: 0; border-radius: 8px; padding: 6px 9px; font-size: 12px;
+  background: rgba(255, 255, 255, 0.9); color: var(--ink);
+}
+#debug .hdr { width: 100%; color: #fff; font-size: 11px; opacity: 0.8; }
+
+#toast {
+  position: fixed; left: 50%; top: calc(14px + var(--safe-t)); transform: translateX(-50%);
+  z-index: 30; padding: 8px 16px; border-radius: 14px; font-size: 14px;
+  background: rgba(255, 255, 255, 0.92); box-shadow: 0 4px 16px rgba(0,0,0,0.2);
+}
+#toast[hidden] { display: none; }
+
+/* ---------- overlays ---------- */
+.overlay {
+  position: fixed; inset: 0; z-index: 40; display: flex; align-items: center; justify-content: center;
+  background: rgba(255, 225, 238, 0.28);
+  backdrop-filter: blur(5px); -webkit-backdrop-filter: blur(5px);
+  transition: opacity 0.9s ease, visibility 0.9s;
+}
+.overlay.hide { opacity: 0; visibility: hidden; pointer-events: none; }
+.card { text-align: center; padding: 18px 30px; }
+.card h1 {
+  margin: 0 0 6px; font-size: clamp(30px, 9vh, 64px); line-height: 1.02; letter-spacing: 2px;
+  color: #fff; text-shadow: 0 3px 0 #e8508f, 0 6px 18px rgba(120, 20, 80, 0.45);
+}
+.card .sub { margin: 0 0 16px; color: #fff; text-shadow: 0 2px 8px rgba(100,20,70,0.5); font-size: 15px; }
+button.primary {
+  border: 0; border-radius: 999px; padding: 12px 38px; font-size: 20px; font-weight: 800; letter-spacing: 1px;
+  color: #fff; background: linear-gradient(160deg, #ff8fbd, #ee4f93);
+  box-shadow: 0 6px 20px rgba(200, 40, 110, 0.45);
+}
+button.primary:active { transform: scale(0.96); }
+button.ghost { display: block; margin: 12px auto 0; border: 0; background: transparent; color: #fff; text-decoration: underline; font-size: 13px; opacity: 0.85; }
+button.ghost[hidden] { display: none; }
+
+#rotate { display: none; z-index: 60; background: rgba(40, 20, 50, 0.92); color: #fff; }
+.phone-icon { font-size: 54px; animation: tilt 1.6s ease-in-out infinite; }
+@keyframes tilt { 0%, 100% { transform: rotate(0); } 50% { transform: rotate(-90deg); } }
+body.touch #rotate { display: flex; }
+@media (orientation: landscape) { body.touch #rotate { display: none; } }
+
+#loading {
+  position: fixed; inset: 0; z-index: 70; display: flex; flex-direction: column; align-items: center; justify-content: center;
+  background: linear-gradient(#ffc9dd, #cfe8ef); transition: opacity 0.6s;
+}
+#loading.hide { opacity: 0; pointer-events: none; }
+.spinner { width: 38px; height: 38px; border-radius: 50%; border: 4px solid rgba(255,255,255,0.7); border-top-color: #ee4f93; animation: spin 0.9s linear infinite; }
+@keyframes spin { to { transform: rotate(360deg); } }
+
+/* small landscape phones (e.g. 360px tall) */
+@media (max-height: 420px) {
+  #actions { transform: scale(0.88); transform-origin: right bottom; }
+  .card h1 { font-size: 34px; }
+  #joyBase { width: 104px; height: 104px; margin: -52px 0 0 -52px; }
+}
+
+</style>
+  
+</head>
+<body>
+  <canvas id="game"></canvas>
+
+  <!-- camera drag layer (sits under the controls) -->
+  <div id="camzone"></div>
+
+  <!-- HUD -->
+  <div id="hud">
+    <div id="timeChip"><span id="timeIcon">☀</span> <span id="timeText" dir="rtl"></span></div>
+    <div id="fps" title="Tap for debug panel">-- fps</div>
+  </div>
+
+  <!-- touch controls -->
+  <div id="controls">
+    <div id="joyZone"><div id="joyBase"><div id="joyKnob"></div></div></div>
+    <div id="actions">
+      <button id="btnJump" class="abtn big" aria-label="Jump">JUMP</button>
+      <button id="btnAction" class="abtn" aria-label="Interact">ACT</button>
+      <button id="btnRun" class="abtn" aria-label="Run toggle">RUN</button>
+    </div>
+  </div>
+
+  <div id="debug" hidden></div>
+  <div id="toast" hidden></div>
+
+  <!-- title screen: blurred garden behind -->
+  <div id="start" class="overlay">
+    <div class="card">
+      <h1>SELI'S<br>LITTLE WORLD</h1>
+      <p class="sub">A little 3D garden to explore</p>
+      <button id="startBtn" class="primary">START ♡</button>
+      <button id="resetBtn" class="ghost" hidden>New game</button>
+    </div>
+  </div>
+
+  <div id="rotate" class="overlay">
+    <div class="card">
+      <div class="phone-icon">📱</div>
+      <p>Please rotate your phone to landscape</p>
+      <p dir="rtl">لطفاً گوشی را افقی کنید</p>
+    </div>
+  </div>
+
+  <div id="loading"><div class="spinner"></div><p id="loadingText">Loading…</p></div>
+
+  <script>
+    // If the game script fails (no internet / CDN blocked / old browser), say so instead of spinning forever.
+    function showErr(msg) {
+      var t = document.getElementById('loadingText');
+      if (t) t.innerHTML = 'Could not start the game.<br>' + msg + '<br><small>Check your internet connection and use an up-to-date Chrome.</small>';
+      var s = document.querySelector('#loading .spinner');
+      if (s) s.style.display = 'none';
+    }
+    window.addEventListener('error', function (e) { showErr(String(e.message || 'script error')); });
+    window.addEventListener('unhandledrejection', function (e) { showErr(String(e.reason)); });
+    setTimeout(function () { if (document.getElementById('loading') && !document.getElementById('loading').classList.contains('hide')) showErr('Loading is taking too long.'); }, 20000);
+  </script>
+  <script>
+(()=>{var Fm=Object.defineProperty;var Bm=(s,t)=>{for(var e in t)Fm(s,e,{get:t[e],enumerable:!0})};var wi={};Bm(wi,{ACESFilmicToneMapping:()=>Pp,AddEquation:()=>Oi,AddOperation:()=>Tp,AdditiveAnimationBlendMode:()=>Ju,AdditiveBlending:()=>Yr,AgXToneMapping:()=>Ip,AlphaFormat:()=>Op,AlwaysCompare:()=>tm,AlwaysDepth:()=>yp,AlwaysStencilFunc:()=>Eh,AmbientLight:()=>Cc,AnimationAction:()=>zc,AnimationClip:()=>Rs,AnimationLoader:()=>Qh,AnimationMixer:()=>mu,AnimationObjectGroup:()=>pu,AnimationUtils:()=>hM,ArcCurve:()=>nc,ArrayCamera:()=>Za,ArrowHelper:()=>Fu,AttachedBindMode:()=>$l,Audio:()=>Fc,AudioAnalyser:()=>du,AudioContext:()=>Io,AudioListener:()=>hu,AudioLoader:()=>cu,AxesHelper:()=>Bu,BackSide:()=>Ze,BasicDepthPacking:()=>Xp,BasicShadowMap:()=>Gm,BatchedMesh:()=>tc,Bone:()=>mo,BooleanKeyframeTrack:()=>bi,Box2:()=>Su,Box3:()=>Je,Box3Helper:()=>Nu,BoxGeometry:()=>ae,BoxHelper:()=>Uu,BufferAttribute:()=>se,BufferGeometry:()=>Ot,BufferGeometryLoader:()=>Nc,ByteType:()=>Up,Cache:()=>fi,Camera:()=>hr,CameraHelper:()=>Du,CanvasTexture:()=>go,CapsuleGeometry:()=>ln,CatmullRomCurve3:()=>ic,CineonToneMapping:()=>Cp,CircleGeometry:()=>Qn,ClampToEdgeWrapping:()=>nn,Clock:()=>Oc,Color:()=>et,ColorKeyframeTrack:()=>Ro,ColorManagement:()=>ue,CompressedArrayTexture:()=>qh,CompressedCubeTexture:()=>Yh,CompressedTexture:()=>_r,CompressedTextureLoader:()=>jh,ConeGeometry:()=>Ln,ConstantAlphaFactor:()=>gp,ConstantColorFactor:()=>pp,CubeCamera:()=>qa,CubeReflectionMapping:()=>vi,CubeRefractionMapping:()=>Hi,CubeTexture:()=>xs,CubeTextureLoader:()=>tu,CubeUVReflectionMapping:()=>Er,CubicBezierCurve:()=>_o,CubicBezierCurve3:()=>sc,CubicInterpolant:()=>Sc,CullFaceBack:()=>Xl,CullFaceFront:()=>tp,CullFaceFrontBack:()=>Vm,CullFaceNone:()=>jf,Curve:()=>bn,CurvePath:()=>ac,CustomBlending:()=>np,CustomToneMapping:()=>Lp,CylinderGeometry:()=>fe,Cylindrical:()=>bu,Data3DTexture:()=>ao,DataArrayTexture:()=>ar,DataTexture:()=>_i,DataTextureLoader:()=>eu,DataUtils:()=>$0,DecrementStencilOp:()=>e0,DecrementWrapStencilOp:()=>i0,DefaultLoadingManager:()=>ym,DepthFormat:()=>Bi,DepthStencilFormat:()=>_s,DepthTexture:()=>uo,DetachedBindMode:()=>Dp,DirectionalLight:()=>Mr,DirectionalLightHelper:()=>Iu,DiscreteInterpolant:()=>wc,DisplayP3ColorSpace:()=>Gc,DodecahedronGeometry:()=>cc,DoubleSide:()=>un,DstAlphaFactor:()=>lp,DstColorFactor:()=>up,DynamicCopyUsage:()=>x0,DynamicDrawUsage:()=>d0,DynamicReadUsage:()=>m0,EdgesGeometry:()=>lc,EllipseCurve:()=>xr,EqualCompare:()=>$p,EqualDepth:()=>Mp,EqualStencilFunc:()=>a0,EquirectangularReflectionMapping:()=>Jr,EquirectangularRefractionMapping:()=>$r,Euler:()=>zn,EventDispatcher:()=>Bn,ExtrudeGeometry:()=>hc,FileLoader:()=>kn,Float16BufferAttribute:()=>Dh,Float32BufferAttribute:()=>_t,Float64BufferAttribute:()=>Uh,FloatType:()=>On,Fog:()=>fr,FogExp2:()=>$a,FramebufferTexture:()=>Xh,FrontSide:()=>yi,Frustum:()=>ys,GLBufferAttribute:()=>yu,GLSL1:()=>v0,GLSL3:()=>bh,GreaterCompare:()=>Kp,GreaterDepth:()=>bp,GreaterEqualCompare:()=>jp,GreaterEqualDepth:()=>Ep,GreaterEqualStencilFunc:()=>u0,GreaterStencilFunc:()=>l0,GridHelper:()=>Pu,Group:()=>xe,HalfFloatType:()=>sr,HemisphereLight:()=>vr,HemisphereLightHelper:()=>Cu,IcosahedronGeometry:()=>De,ImageBitmapLoader:()=>au,ImageLoader:()=>Cs,ImageUtils:()=>oo,IncrementStencilOp:()=>t0,IncrementWrapStencilOp:()=>n0,InstancedBufferAttribute:()=>Gi,InstancedBufferGeometry:()=>Uc,InstancedInterleavedBuffer:()=>xu,InstancedMesh:()=>Te,Int16BufferAttribute:()=>Lh,Int32BufferAttribute:()=>Ih,Int8BufferAttribute:()=>Rh,IntType:()=>Vu,InterleavedBuffer:()=>mr,InterleavedBufferAttribute:()=>vs,Interpolant:()=>ws,InterpolateDiscrete:()=>Qr,InterpolateLinear:()=>jr,InterpolateSmooth:()=>za,InvertStencilOp:()=>s0,KeepStencilOp:()=>ls,KeyframeTrack:()=>wn,LOD:()=>Ka,LatheGeometry:()=>Eo,Layers:()=>cr,LessCompare:()=>Jp,LessDepth:()=>vp,LessEqualCompare:()=>Ku,LessEqualDepth:()=>Zr,LessEqualStencilFunc:()=>c0,LessStencilFunc:()=>o0,Light:()=>jn,LightProbe:()=>Ic,Line:()=>Kn,Line3:()=>wu,LineBasicMaterial:()=>$e,LineCurve:()=>xo,LineCurve3:()=>rc,LineDashedMaterial:()=>bc,LineLoop:()=>ec,LineSegments:()=>Pn,LinearDisplayP3ColorSpace:()=>Uo,LinearEncoding:()=>$u,LinearFilter:()=>Le,LinearInterpolant:()=>Ao,LinearMipMapLinearFilter:()=>Zm,LinearMipMapNearestFilter:()=>Ym,LinearMipmapLinearFilter:()=>ki,LinearMipmapNearestFilter:()=>ku,LinearSRGBColorSpace:()=>Jn,LinearToneMapping:()=>Ap,LinearTransfer:()=>eo,Loader:()=>sn,LoaderUtils:()=>Lo,LoadingManager:()=>Co,LoopOnce:()=>Vp,LoopPingPong:()=>Wp,LoopRepeat:()=>Gp,LuminanceAlphaFormat:()=>Bp,LuminanceFormat:()=>Fp,MOUSE:()=>Hm,Material:()=>qe,MaterialLoader:()=>Dc,MathUtils:()=>N0,Matrix3:()=>$t,Matrix4:()=>Ct,MaxEquation:()=>Jl,Mesh:()=>kt,MeshBasicMaterial:()=>Me,MeshDepthMaterial:()=>fo,MeshDistanceMaterial:()=>po,MeshLambertMaterial:()=>Bt,MeshMatcapMaterial:()=>Ec,MeshNormalMaterial:()=>Mc,MeshPhongMaterial:()=>yr,MeshPhysicalMaterial:()=>yc,MeshStandardMaterial:()=>To,MeshToonMaterial:()=>vc,MinEquation:()=>Zl,MirroredRepeatWrapping:()=>Kr,MixOperation:()=>wp,MultiplyBlending:()=>Yl,MultiplyOperation:()=>Do,NearestFilter:()=>Ce,NearestMipMapLinearFilter:()=>qm,NearestMipMapNearestFilter:()=>Xm,NearestMipmapLinearFilter:()=>kr,NearestMipmapNearestFilter:()=>Va,NeverCompare:()=>Zp,NeverDepth:()=>xp,NeverStencilFunc:()=>r0,NoBlending:()=>pi,NoColorSpace:()=>vn,NoToneMapping:()=>mi,NormalAnimationBlendMode:()=>Vc,NormalBlending:()=>ms,NotEqualCompare:()=>Qp,NotEqualDepth:()=>Sp,NotEqualStencilFunc:()=>h0,NumberKeyframeTrack:()=>Ts,Object3D:()=>ce,ObjectLoader:()=>ou,ObjectSpaceNormalMap:()=>Yp,OctahedronGeometry:()=>Ss,OneFactor:()=>op,OneMinusConstantAlphaFactor:()=>_p,OneMinusConstantColorFactor:()=>mp,OneMinusDstAlphaFactor:()=>hp,OneMinusDstColorFactor:()=>dp,OneMinusSrcAlphaFactor:()=>ka,OneMinusSrcColorFactor:()=>cp,OrthographicCamera:()=>ur,P3Primaries:()=>io,PCFShadowMap:()=>Hu,PCFSoftShadowMap:()=>ep,PMREMGenerator:()=>ho,Path:()=>Es,PerspectiveCamera:()=>Ie,Plane:()=>Yn,PlaneGeometry:()=>Hn,PlaneHelper:()=>Ou,PointLight:()=>Rc,PointLightHelper:()=>Ru,Points:()=>gr,PointsMaterial:()=>Ms,PolarGridHelper:()=>Lu,PolyhedronGeometry:()=>Wi,PositionalAudio:()=>uu,PropertyBinding:()=>he,PropertyMixer:()=>Bc,QuadraticBezierCurve:()=>yo,QuadraticBezierCurve3:()=>vo,Quaternion:()=>re,QuaternionKeyframeTrack:()=>Xi,QuaternionLinearInterpolant:()=>Tc,RED_GREEN_RGTC2_Format:()=>vh,RED_RGTC1_Format:()=>kp,REVISION:()=>zm,RGBADepthPacking:()=>qp,RGBAFormat:()=>dn,RGBAIntegerFormat:()=>Yu,RGBA_ASTC_10x10_Format:()=>ph,RGBA_ASTC_10x5_Format:()=>uh,RGBA_ASTC_10x6_Format:()=>dh,RGBA_ASTC_10x8_Format:()=>fh,RGBA_ASTC_12x10_Format:()=>mh,RGBA_ASTC_12x12_Format:()=>gh,RGBA_ASTC_4x4_Format:()=>ih,RGBA_ASTC_5x4_Format:()=>sh,RGBA_ASTC_5x5_Format:()=>rh,RGBA_ASTC_6x5_Format:()=>oh,RGBA_ASTC_6x6_Format:()=>ah,RGBA_ASTC_8x5_Format:()=>ch,RGBA_ASTC_8x6_Format:()=>lh,RGBA_ASTC_8x8_Format:()=>hh,RGBA_BPTC_Format:()=>Ba,RGBA_ETC2_EAC_Format:()=>nh,RGBA_PVRTC_2BPPV1_Format:()=>th,RGBA_PVRTC_4BPPV1_Format:()=>jl,RGBA_S3TC_DXT1_Format:()=>Na,RGBA_S3TC_DXT3_Format:()=>Oa,RGBA_S3TC_DXT5_Format:()=>Fa,RGB_BPTC_SIGNED_Format:()=>_h,RGB_BPTC_UNSIGNED_Format:()=>xh,RGB_ETC1_Format:()=>Zu,RGB_ETC2_Format:()=>eh,RGB_PVRTC_2BPPV1_Format:()=>Ql,RGB_PVRTC_4BPPV1_Format:()=>Kl,RGB_S3TC_DXT1_Format:()=>Ua,RGFormat:()=>Hp,RGIntegerFormat:()=>qu,RawShaderMaterial:()=>xc,Ray:()=>Vi,Raycaster:()=>vu,Rec709Primaries:()=>no,RectAreaLight:()=>Pc,RedFormat:()=>zp,RedIntegerFormat:()=>Xu,ReinhardToneMapping:()=>Rp,RenderTarget:()=>Xa,RepeatWrapping:()=>Mi,ReplaceStencilOp:()=>jm,ReverseSubtractEquation:()=>sp,RingGeometry:()=>uc,SIGNED_RED_GREEN_RGTC2_Format:()=>Mh,SIGNED_RED_RGTC1_Format:()=>yh,SRGBColorSpace:()=>Pe,SRGBTransfer:()=>_e,Scene:()=>pr,ShaderChunk:()=>Yt,ShaderLib:()=>Nn,ShaderMaterial:()=>pn,ShadowMaterial:()=>_c,Shape:()=>xi,ShapeGeometry:()=>dc,ShapePath:()=>zu,ShapeUtils:()=>Zn,ShortType:()=>Np,Skeleton:()=>ja,SkeletonHelper:()=>Au,SkinnedMesh:()=>Qa,Source:()=>ui,Sphere:()=>Xe,SphereGeometry:()=>Vt,Spherical:()=>Eu,SphericalHarmonics3:()=>Lc,SplineCurve:()=>Mo,SpotLight:()=>Ac,SpotLightHelper:()=>Tu,Sprite:()=>Ei,SpriteMaterial:()=>$n,SrcAlphaFactor:()=>Ha,SrcAlphaSaturateFactor:()=>fp,SrcColorFactor:()=>ap,StaticCopyUsage:()=>_0,StaticDrawUsage:()=>so,StaticReadUsage:()=>p0,StereoCamera:()=>lu,StreamCopyUsage:()=>y0,StreamDrawUsage:()=>f0,StreamReadUsage:()=>g0,StringKeyframeTrack:()=>Si,SubtractEquation:()=>ip,SubtractiveBlending:()=>ql,TOUCH:()=>km,TangentSpaceNormalMap:()=>qi,TetrahedronGeometry:()=>fc,Texture:()=>Fe,TextureLoader:()=>nu,TorusGeometry:()=>Sn,TorusKnotGeometry:()=>pc,Triangle:()=>di,TriangleFanDrawMode:()=>Km,TriangleStripDrawMode:()=>$m,TrianglesDrawMode:()=>Jm,TubeGeometry:()=>mc,TwoPassDoubleSide:()=>Wm,UVMapping:()=>Hc,Uint16BufferAttribute:()=>co,Uint32BufferAttribute:()=>lo,Uint8BufferAttribute:()=>Ch,Uint8ClampedBufferAttribute:()=>Ph,Uniform:()=>gu,UniformsGroup:()=>_u,UniformsLib:()=>ct,UniformsUtils:()=>rm,UnsignedByteType:()=>gi,UnsignedInt248Type:()=>Fi,UnsignedIntType:()=>hi,UnsignedShort4444Type:()=>Gu,UnsignedShort5551Type:()=>Wu,UnsignedShortType:()=>kc,VSMShadowMap:()=>qn,Vector2:()=>$,Vector3:()=>T,Vector4:()=>de,VectorKeyframeTrack:()=>As,VideoTexture:()=>Wh,WebGL1Renderer:()=>Ja,WebGL3DRenderTarget:()=>Th,WebGLArrayRenderTarget:()=>wh,WebGLCoordinateSystem:()=>Fn,WebGLCubeRenderTarget:()=>Ya,WebGLMultipleRenderTargets:()=>Ah,WebGLRenderTarget:()=>En,WebGLRenderer:()=>dr,WebGLUtils:()=>dm,WebGPUCoordinateSystem:()=>rr,WireframeGeometry:()=>gc,WrapAroundEnding:()=>to,ZeroCurvatureEnding:()=>ds,ZeroFactor:()=>rp,ZeroSlopeEnding:()=>fs,ZeroStencilOp:()=>Qm,_SRGBAFormat:()=>Ga,createCanvasElement:()=>nm,sRGBEncoding:()=>zi});var zm="160",Hm={LEFT:0,MIDDLE:1,RIGHT:2,ROTATE:0,DOLLY:1,PAN:2},km={ROTATE:0,PAN:1,DOLLY_PAN:2,DOLLY_ROTATE:3},jf=0,Xl=1,tp=2,Vm=3,Gm=0,Hu=1,ep=2,qn=3,yi=0,Ze=1,un=2,Wm=2,pi=0,ms=1,Yr=2,ql=3,Yl=4,np=5,Oi=100,ip=101,sp=102,Zl=103,Jl=104,rp=200,op=201,ap=202,cp=203,Ha=204,ka=205,lp=206,hp=207,up=208,dp=209,fp=210,pp=211,mp=212,gp=213,_p=214,xp=0,yp=1,vp=2,Zr=3,Mp=4,Ep=5,bp=6,Sp=7,Do=0,wp=1,Tp=2,mi=0,Ap=1,Rp=2,Cp=3,Pp=4,Lp=5,Ip=6,$l="attached",Dp="detached",Hc=300,vi=301,Hi=302,Jr=303,$r=304,Er=306,Mi=1e3,nn=1001,Kr=1002,Ce=1003,Va=1004,Xm=1004,kr=1005,qm=1005,Le=1006,ku=1007,Ym=1007,ki=1008,Zm=1008,gi=1009,Up=1010,Np=1011,kc=1012,Vu=1013,hi=1014,On=1015,sr=1016,Gu=1017,Wu=1018,Fi=1020,Op=1021,dn=1023,Fp=1024,Bp=1025,Bi=1026,_s=1027,zp=1028,Xu=1029,Hp=1030,qu=1031,Yu=1033,Ua=33776,Na=33777,Oa=33778,Fa=33779,Kl=35840,Ql=35841,jl=35842,th=35843,Zu=36196,eh=37492,nh=37496,ih=37808,sh=37809,rh=37810,oh=37811,ah=37812,ch=37813,lh=37814,hh=37815,uh=37816,dh=37817,fh=37818,ph=37819,mh=37820,gh=37821,Ba=36492,_h=36494,xh=36495,kp=36283,yh=36284,vh=36285,Mh=36286,Vp=2200,Gp=2201,Wp=2202,Qr=2300,jr=2301,za=2302,ds=2400,fs=2401,to=2402,Vc=2500,Ju=2501,Jm=0,$m=1,Km=2,$u=3e3,zi=3001,Xp=3200,qp=3201,qi=0,Yp=1,vn="",Pe="srgb",Jn="srgb-linear",Gc="display-p3",Uo="display-p3-linear",eo="linear",_e="srgb",no="rec709",io="p3",Qm=0,ls=7680,jm=7681,t0=7682,e0=7683,n0=34055,i0=34056,
